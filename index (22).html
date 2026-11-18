@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sound Sentry – Live Logger</title>
+<meta name="description" content="Live serial logger for Sound Sentry (MAX4466). Real hardware data streams into an Excel-style sheet and exports to .xlsx or CSV.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232563eb'/%3E%3Cpath d='M7 16h3l3-8 4 16 3-8h5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#e8ecf1;--pn:#fbfcfd;--p2:#eef2f6;--tx:#121c27;--mu:#58687a;--bd:#d3dae3;--gl:#dde3ea;--ac:#2563eb;--xl:#217346;--s0:#11865a;--s1:#6f8f12;--s2:#b87500;--s3:#d1272b;--f:"IBM Plex Sans Condensed","Segoe UI",system-ui,sans-serif;--d:"Big Shoulders Display","Arial Narrow",Impact,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0b1016;--pn:#131b24;--p2:#192330;--tx:#e6ebf2;--mu:#8fa0b3;--bd:#27333f;--gl:#222d39;--ac:#5b9dff;--s0:#3be09a;--s1:#c3e84a;--s2:#ffc247;--s3:#ff6b6f}}
+:root[data-theme=dark]{--bg:#0b1016;--pn:#131b24;--p2:#192330;--tx:#e6ebf2;--mu:#8fa0b3;--bd:#27333f;--gl:#222d39;--ac:#5b9dff;--s0:#3be09a;--s1:#c3e84a;--s2:#ffc247;--s3:#ff6b6f}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.4 var(--f);background:var(--bg);color:var(--tx);height:100dvh;display:flex;flex-direction:column;font-variant-numeric:tabular-nums}
+button{font:inherit;color:var(--tx);background:var(--pn);border:1px solid var(--bd);border-radius:8px;padding:7px 13px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--ac)}button:disabled{opacity:.45;cursor:not-allowed}[hidden]{display:none!important}
+button.pri{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.top{display:flex;align-items:center;gap:10px;padding:9px 16px;background:var(--pn);border-bottom:1px solid var(--bd)}
+.brand{display:flex;align-items:center;gap:10px}.brand svg{width:32px;height:32px}
+h1{font:700 22px/1 var(--d);letter-spacing:.02em}.brand span{color:var(--mu);font-size:12px}
+.sp{flex:1}
+.pill{display:flex;align-items:center;gap:7px;padding:4px 12px;border:1px solid var(--bd);border-radius:99px;background:var(--p2);font-weight:500}
+.pill i{width:9px;height:9px;border-radius:50%;background:var(--mu)}
+.pill[data-s=live] i{background:#2bd48a;animation:pu 1.2s infinite}.pill[data-s=demo] i{background:#ffb41f;animation:pu 1.2s infinite}
+.pill[data-s=err] i{background:#ff4d52}.pill[data-s=conn] i{background:var(--ac)}
+@keyframes pu{50%{box-shadow:0 0 0 5px transparent;opacity:.45}}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(390px,1fr);gap:14px;padding:14px}
+.hero{display:flex;flex-direction:column;gap:12px;min-height:0}
+.inst{flex:1;min-height:290px;display:grid;grid-template-columns:54px 1fr;gap:14px;padding:14px;border-radius:14px;background:#0a121a;box-shadow:inset 0 0 0 1px #223244,inset 0 0 70px rgba(37,99,235,.1)}
+.hero.al .inst{animation:al .5s steps(2) infinite}
+@keyframes al{50%{box-shadow:inset 0 0 0 2px #ff4d52,inset 0 0 90px rgba(255,77,82,.35)}}
+.lad{display:flex;flex-direction:column;gap:3px}
+.lad i{flex:1;border-radius:2px;background:color-mix(in srgb,var(--c) 13%,#101b27)}
+.lad i.on{background:var(--c);box-shadow:0 0 9px var(--c)}.lad i.hk{background:#fff}
+.scw{position:relative;min-width:0;min-height:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.ro{position:absolute;left:52px;top:14px;pointer-events:none}
+.lv{font:900 92px/.85 var(--d);color:#fff;text-shadow:0 0 28px rgba(120,170,255,.5)}
+.stw{font:700 26px/1.2 var(--d);letter-spacing:.04em;color:#7f93a8}
+.dm{position:absolute;right:12px;top:12px;font:700 13px var(--f);padding:3px 10px;border-radius:6px;background:#ffb41f;color:#2b1a00}
+.tip{position:absolute;pointer-events:none;background:#000b;color:#fff;border:1px solid #fff3;border-radius:6px;padding:3px 8px;font-size:12px;white-space:nowrap}
+.fz{position:absolute;right:12px;bottom:26px;background:#0a121acc;color:#e6ebf2;border-color:#fff3;padding:4px 11px}
+.fz.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:0;background:var(--pn);border:1px solid var(--bd);border-radius:12px}
+.stats div{padding:9px 14px;border-left:1px solid var(--bd)}.stats div:first-child{border:0}
+dt{color:var(--mu);font-size:12px}dd{font:700 28px/1.1 var(--d)}
+.sb{background:var(--pn);border:1px solid var(--bd);border-radius:12px;padding:10px 14px}
+.sbar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--gl)}.sbar i{flex:0 0 0;transition:flex-basis .4s}
+#lg{display:flex;gap:18px;flex-wrap:wrap;margin-top:7px;color:var(--mu);font-size:12px}#lg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}#lg b{color:var(--tx);font-weight:600}
+.xl{display:flex;flex-direction:column;min-height:0;background:var(--pn);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.xt{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--xl);color:#fff}
+.xt b{font-weight:600}.xt span{opacity:.75}.xt .sp{flex:1}
+.xt button{background:#ffffff22;border-color:#ffffff44;color:#fff;padding:3px 10px;border-radius:6px}
+.tw{flex:1;overflow:auto;position:relative}
+table{width:100%;border-collapse:separate;border-spacing:0}
+th,td{padding:0 9px;height:24px;border-right:1px solid var(--gl);border-bottom:1px solid var(--gl);white-space:nowrap}
+thead th{position:sticky;background:var(--p2);color:var(--mu);font-weight:500;z-index:2}
+.l1 th{top:0;text-align:center}.l2 th{top:24px;color:var(--tx);font-weight:600;text-align:left}
+tbody th{background:var(--p2);color:var(--mu);font-weight:400;text-align:center;width:44px}
+td.n{text-align:right}
+td.lb{background:linear-gradient(90deg,color-mix(in srgb,var(--ac) 32%,transparent) var(--p),transparent var(--p))}
+.dt{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;background:var(--mu)}
+.s0{background:var(--s0)}.s1{background:var(--s1)}.s2{background:var(--s2)}.s3{background:var(--s3)}
+tr{cursor:pointer}tr.sel td{outline:2px solid var(--xl);outline-offset:-2px}
+tr.nw td{animation:fl 1.3s ease-out}@keyframes fl{from{background-color:color-mix(in srgb,var(--xl) 30%,transparent)}}
+.xf{display:flex;gap:10px;align-items:center;padding:6px 12px;border-top:1px solid var(--bd);background:var(--p2);color:var(--mu);font-size:12px}
+.xf span:first-child{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.xf button{padding:2px 10px}
+@media (max-width:960px){body{height:auto;min-height:100dvh}main{display:block}.xl{height:480px;margin-top:14px}.inst{min-height:320px}.stats{grid-template-columns:repeat(3,1fr)}.stats div:nth-child(4){border-left:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2563eb"/><path d="M6 16h3l3-8 4 16 3-8h7" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><div><h1>Sound Sentry</h1><span>Live logger, real hardware</span></div></div>
+  <div class="sp"></div>
+  <div class="pill" id="pill" data-s="off" aria-live="polite"><i></i><span id="pt">Offline</span></div>
+  <button class="pri" id="bc">Connect Arduino</button><button id="bd" hidden>Disconnect</button>
+  <button id="bm" title="Simulated data for testing the page">Demo</button><button id="bt" aria-label="Switch light and dark theme">Theme</button>
+</header>
+<main>
+  <section class="hero" id="hero">
+    <div class="inst"><div class="lad" id="lad"></div>
+      <div class="scw"><canvas id="sc"></canvas>
+        <div class="ro"><div class="lv" id="lv">--</div><div class="stw" id="stw">No signal</div></div>
+        <div class="dm" id="dm" hidden>Demo data, not from hardware</div>
+        <div class="tip" id="tip" hidden></div><button class="fz" id="bf">Freeze</button></div></div>
+    <dl class="stats" id="stats"></dl>
+    <div class="sb"><div class="sbar" id="sbar"><i style="background:#2bd48a"></i><i style="background:#b6e03a"></i><i style="background:#ffb41f"></i><i style="background:#ff4d52"></i></div><div id="lg"></div></div>
+  </section>
+  <section class="xl">
+    <div class="xt"><b id="xn">SoundSentry_log.xlsx</b><span>Excel</span><div class="sp"></div><button id="bx">Save .xlsx</button><button id="bv">CSV</button><button id="bp">Copy</button><button id="br">Clear</button></div>
+    <div class="tw" id="tw"><table>
+      <thead><tr class="l1"><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr>
+      <tr class="l2"><th>1</th><th>Time (s)</th><th>Peak</th><th>Level</th><th>Status</th><th>Clock</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <div class="xf"><span id="ms">Waiting for data</span><button id="bj" hidden>Jump to latest</button><span id="rc">0 rows</span></div>
+  </section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const $=i=>document.getElementById(i),ZC=['#2bd48a','#b6e03a','#ffb41f','#ff4d52'],WIN=30,NS=24;
+/* Two status vocabularies. 3 = Sound Sentry Uno (traffic light: Quiet, Caution, Warning). 4 = older sketch (Quiet, Normal, Loud, Very Loud).
+   ci = colour index into ZC and the .s0-.s3 dot classes, edges = level bands drawn on the scope and ladder. */
+const MODES={3:{names:['Quiet','Caution','Warning'],ci:[0,2,3],edges:[0,100/3,200/3,100],ev:'Warning events',tl:'Time in warning'},
+  4:{names:['Quiet','Normal','Loud','Very Loud'],ci:[0,1,2,3],edges:[0,25,50,75,100],ev:'Loud events',tl:'Time loud'}};
+const kn=s=>(s||'').toLowerCase().replace(/\s/g,'');
+let mode=3;
+const zi=s=>MODES[mode].names.findIndex(n=>kn(n)===kn(s));
+let rows=[],port=null,rd=null,run=0,demo=0,dtm=0,dti=0,fz=0,fT=0,lastT=0,lastAt=0,hov=-1,sel=-1,follow=1,disp=0,hold=0,got=0,lt=0,shown=-1,hk=-1,cv_=-9,A;
+const rst=()=>A={sum:0,min:1e9,max:0,ev:0,tz:[0,0,0,0],prev:-1,pt:0};rst();
+const lad=$('lad');for(let k=NS-1;k>=0;k--)lad.append(document.createElement('i'));
+const sg=[...lad.children],tb=$('tb'),tw=$('tw'),cv=$('sc'),cx=cv.getContext('2d');
+function setMode(m){mode=m;const M=MODES[m],n=M.names.length;
+  sg.forEach((e,j)=>{const v=(NS-j)*100/NS;let b=n-1;for(let q=0;q<n;q++)if(v<=M.edges[q+1]+1e-6){b=q;break}e.style.setProperty('--c',ZC[M.ci[b]])});
+  $('lg').innerHTML=M.names.map((z,k)=>`<span><i style="background:${ZC[M.ci[k]]}"></i>${z} <b id="lz${k}">0%</b></span>`).join('');
+  [...$('sbar').children].forEach((e,k)=>e.style.background=ZC[M.ci[k]??3]);cv_=-9;stat()}
+/* A status word from the other vocabulary switches the page over, but only while nothing except Quiet rows is on screen */
+function pick(st){if(zi(st)>=0)return;const k=kn(st);for(const m of [3,4])if(m!==mode&&MODES[m].names.some(n=>kn(n)===k)&&rows.every(r=>r.z<1)){setMode(m);return}}
+function setP(s,t){$('pill').dataset.s=s;$('pt').textContent=t}
+function ui(){$('bc').hidden=!!port;$('bd').hidden=!run;$('bm').disabled=!!run;$('bm').textContent=demo?'Stop demo':'Demo';$('dm').hidden=!demo}
+const nowT=()=>fz?fT:((run||demo)&&rows.length?lastT+(performance.now()-lastAt)/1000:lastT);
+function setFz(on,T){fz=on;fT=T;$('bf').textContent=on?'Resume live':'Freeze';$('bf').classList.toggle('on',!!on)}
+function summary(){const n=rows.length,tt=A.tz.reduce((a,b)=>a+b,0)||1,du=n?rows[n-1].t-rows[0].t:0,f=s=>[~~(s/3600),~~(s%3600/60),~~(s%60)].map(v=>String(v).padStart(2,'0')).join(':');
+  return[['Average',n?(A.sum/n).toFixed(1):'--'],['Max',n?A.max:'--'],[MODES[mode].ev,A.ev],[MODES[mode].tl,Math.round((A.tz[2]+A.tz[3])/tt*100)+'%'],['Duration',f(du)],['Rows',n]]}
+function stat(){$('stats').innerHTML=summary().map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');const tt=A.tz.reduce((a,b)=>a+b,0)||1;
+  A.tz.forEach((v,k)=>{$('sbar').children[k].style.flexBasis=v/tt*100+'%';const e=$('lz'+k);if(e)e.textContent=Math.round(v/tt*100)+'%'});$('rc').textContent=rows.length+' rows'}
+const row=(r,i)=>`<tr data-i="${i}" class="nw"><th>${i+2}</th><td class="n">${r.t}</td><td class="n">${r.pk}</td><td class="n lb" style="--p:${Math.min(100,r.level)}%">${r.level}</td><td><i class="dt s${r.c}"></i>${r.st}</td><td>${r.ck}</td></tr>`;
+function add(t,pk,lv,st,isD){if(![t,pk,lv].every(isFinite)||rows.length>=2e5)return;pick(st);const z=zi(st),d=new Date(),r={t,pk,level:lv,st,z,c:z<0?-1:MODES[mode].ci[z],iso:d.toISOString(),ck:d.toLocaleTimeString('en-GB'),demo:!!isD};
+  if(A.prev>=0&&t-A.pt>0&&t-A.pt<5&&z>=0)A.tz[z]+=t-A.pt;
+  if(z>=2&&A.prev<2)A.ev++;A.prev=z;A.pt=t;A.sum+=lv;A.min=Math.min(A.min,lv);A.max=Math.max(A.max,lv);
+  rows.push(r);lastT=t;lastAt=performance.now();
+  tb.insertAdjacentHTML('beforeend',row(r,rows.length-1));while(tb.children.length>120)tb.firstChild.remove();
+  if(follow)tw.scrollTop=tw.scrollHeight;
+  $('ms').textContent=`Last row: ${t} s, level ${lv}, ${st}`;stat()}
+tw.onscroll=()=>{follow=tw.scrollHeight-tw.scrollTop-tw.clientHeight<30;$('bj').hidden=follow};
+$('bj').onclick=()=>{follow=1;tw.scrollTop=tw.scrollHeight};
+tb.onclick=e=>{const tr=e.target.closest('tr');if(!tr)return;sel=+tr.dataset.i;tb.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));tr.classList.add('sel');setFz(1,Math.min(rows[sel].t+WIN/2,lastT))};
+/* scope */
+let W=0,H=0;new ResizeObserver(()=>{const r=cv.getBoundingClientRect(),d=devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;cx.setTransform(d,0,0,d,0,0)}).observe(cv);
+cv.onpointermove=e=>{hov=e.offsetX};cv.onpointerleave=()=>hov=-1;
+function draw(){if(!W)return;const pl=40,pr=8,pt=10,pb=22,w=W-pl-pr,h=H-pt-pb,Y=v=>pt+h*(1-v/100),now=nowT(),X=t=>pl+w-(now-t)/WIN*w;
+  cx.clearRect(0,0,W,H);const M=MODES[mode],E=M.edges;M.names.forEach((_,b)=>{cx.fillStyle=ZC[M.ci[b]]+'14';cx.fillRect(pl,Y(E[b+1]),w,Y(E[b])-Y(E[b+1]))});
+  cx.font='11px "IBM Plex Sans Condensed",sans-serif';cx.lineWidth=1;cx.strokeStyle='#ffffff16';cx.fillStyle='#7f93a8';cx.textAlign='right';
+  E.forEach(v=>{cx.beginPath();cx.moveTo(pl,Y(v));cx.lineTo(pl+w,Y(v));cx.stroke();cx.fillText(Math.round(v),pl-6,Y(v)+4)});
+  cx.textAlign='center';for(let s=Math.ceil((now-WIN)/5)*5;s<=now;s+=5){const x=X(s);cx.beginPath();cx.moveTo(x,pt);cx.lineTo(x,pt+h);cx.stroke();cx.fillText(Math.max(0,s)+'s',x,H-6)}
+  if(!rows.length){cx.fillStyle='#7f93a8';cx.font='15px "IBM Plex Sans Condensed",sans-serif';cx.fillText('Connect the Arduino to see live sound, or press Demo to test the page',pl+w/2,pt+h/2+60);$('tip').hidden=true;return}
+  let i=rows.length-1;while(i>0&&X(rows[i].t)>pl+w+2)i--;const pts=[];for(let j=i;j>=0;j--){const x=X(rows[j].t);pts.push([x,Y(rows[j].level),j]);if(x<pl-4)break}pts.reverse();
+  if(pts.length>1){cx.save();cx.beginPath();cx.rect(pl,pt-4,w,h+8);cx.clip();const g=cx.createLinearGradient(0,Y(100),0,Y(0));for(let b=M.names.length-1;b>=0;b--)g.addColorStop(1-(E[b]+E[b+1])/200,ZC[M.ci[b]]);
+    cx.beginPath();pts.forEach((p,k)=>k?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1]));cx.lineJoin='round';cx.lineWidth=2.4;cx.strokeStyle=g;cx.shadowColor='#ffffff55';cx.shadowBlur=10;cx.stroke();cx.shadowBlur=0;
+    cx.lineTo(pts[pts.length-1][0],Y(0));cx.lineTo(pts[0][0],Y(0));cx.closePath();cx.globalAlpha=.2;cx.fillStyle=g;cx.fill();cx.restore()}
+  const L=pts[pts.length-1];if(L&&!fz&&(run||demo)){const c=ZC[Math.max(0,rows[L[2]].c)],p=(performance.now()%1200)/1200;cx.fillStyle=c;cx.beginPath();cx.arc(L[0],L[1],4,0,7);cx.fill();cx.strokeStyle=c;cx.globalAlpha=1-p;cx.beginPath();cx.arc(L[0],L[1],4+p*12,0,7);cx.stroke();cx.globalAlpha=1}
+  const hp=hov>=0&&pts.length?pts.reduce((a,b)=>Math.abs(b[0]-hov)<Math.abs(a[0]-hov)?b:a):null,sp=pts.find(p=>p[2]===sel);
+  [sp,hp].forEach((p,k)=>{if(!p)return;cx.strokeStyle=k?'#ffffff99':'#5b9dff';cx.setLineDash(k?[4,4]:[]);cx.beginPath();cx.moveTo(p[0],pt);cx.lineTo(p[0],pt+h);cx.stroke();cx.setLineDash([]);cx.fillStyle='#fff';cx.beginPath();cx.arc(p[0],p[1],4,0,7);cx.fill()});
+  const tp=$('tip');if(hp){const r=rows[hp[2]];tp.hidden=false;tp.textContent=`${r.t} s   level ${r.level}   ${r.st}`;tp.style.left=Math.min(hp[0]+12,W-190)+'px';tp.style.top=Math.max(4,hp[1]-34)+'px'}else tp.hidden=true}
+function loop(t){requestAnimationFrame(loop);const d=Math.min(.1,(t-lt)/1000||0);lt=t;
+  const live=(run||demo)&&rows.length,L=rows[rows.length-1],z=live?L.z:-1;
+  disp+=((live?L.level:0)-disp)*Math.min(1,d*14);hold=disp>hold?disp:Math.max(disp,hold-d*22);
+  const n=Math.round(disp/100*NS),h=Math.round(hold/100*NS)-1;
+  if(n!==shown||h!==hk){shown=n;hk=h;sg.forEach((e,j)=>{const k=NS-1-j;e.className=k<n?'on':k===h?'hk':''})}
+  const lv=live?String(Math.round(disp)):'--';if($('lv').textContent!==lv)$('lv').textContent=lv;
+  if(z!==cv_){cv_=z;$('stw').textContent=live?L.st:rows.length?'Signal lost':'No signal';$('stw').style.color=z>=0?ZC[L.c]:'';$('hero').classList.toggle('al',z===MODES[mode].names.length-1)}
+  draw()}
+/* serial */
+function parse(line){const l=line.trim();if(!l||l[0]==='#'||l.startsWith('time_s'))return;const p=l.split(',');if(p.length===4){got++;add(+p[0],+p[1],+p[2],p[3].trim())}}
+async function openPort(){try{await port.open({baudRate:9600})}catch(e){setP('err','Port busy or unavailable');port=null;ui();return}
+  stopDemo();if(rows.length&&rows[0].demo)$('br').onclick(true);run=1;got=0;setP('live','Live');ui();$('ms').textContent='Connected at 9600 baud. Waiting for data';
+  setTimeout(()=>{if(run&&!got)$('ms').textContent='No data yet. Check 9600 baud and that the sketch prints time_s,peak,level,status'},4000);
+  const dec=new TextDecoderStream(),closed=port.readable.pipeTo(dec.writable).catch(()=>{});rd=dec.readable.getReader();let buf='';
+  try{for(;;){const o=await rd.read();if(o.done)break;buf+=o.value;const ls=buf.split('\n');buf=ls.pop();ls.forEach(parse)}}catch(e){}
+  try{rd.releaseLock()}catch(e){}await closed;try{await port.close()}catch(e){}
+  port=null;rd=null;run=0;setP('off','Disconnected');ui()}
+async function connect(){if(!navigator.serial){setP('err','Needs Chrome or Edge');$('ms').textContent='This browser has no Web Serial. Use Chrome or Edge on a laptop, or press Demo.';return}
+  try{port=await navigator.serial.requestPort()}catch(e){return}setP('conn','Connecting');ui();openPort()}
+$('bc').onclick=connect;$('bd').onclick=async()=>{if(rd)try{await rd.cancel()}catch(e){}};
+if(navigator.serial)navigator.serial.getPorts().then(p=>{if(p.length){port=p[0];setP('conn','Reconnecting');ui();openPort()}});
+/* demo */
+function stopDemo(){clearInterval(dti);demo=0;if(!run)setP('off','Offline');ui()}
+$('bm').onclick=()=>{if(demo){stopDemo();return}if(rows.length&&!rows[0].demo&&!confirm('This clears the real data on screen. Export it first if you need it. Continue?'))return;
+  if(rows.length)$('br').onclick(true);demo=1;dtm=0;let b=0;setP('demo','Demo');ui();
+  dti=setInterval(()=>{dtm=+(dtm+.2).toFixed(2);if(b<=0&&Math.random()<.03)b=10+Math.random()*25;b=Math.max(0,b-.2);
+    const lv=Math.round(Math.max(2,Math.min(100,16+9*Math.sin(dtm/6)+(b>0?30+25*Math.random():0)+Math.random()*6))),st=lv<=33?'Quiet':lv<=66?'Caution':'Warning',pk=Math.round(lv<=33?lv*45/33:lv<=66?46+(lv-34)*64/32:111+(lv-67)*289/33);add(dtm,pk,lv,st,1)},200)};
+/* export */
+const dl=(x,n,ty)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([x],{type:ty}));a.download=n;a.click()};
+const fn=e=>(rows.length&&rows[0].demo?'DEMO_':'')+'SoundSentry_'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.'+e;
+const tbl=()=>[['time_s','peak','level','status','clock']].concat(rows.map(r=>[r.t,r.pk,r.level,r.st,r.iso]));
+$('bv').onclick=()=>rows.length&&dl(tbl().map(r=>r.join(',')).join('\r\n'),fn('csv'),'text/csv');
+$('bp').onclick=async()=>{if(!rows.length)return;try{await navigator.clipboard.writeText(tbl().map(r=>r.join('\t')).join('\n'));$('ms').textContent='Copied. Paste into Excel with Ctrl+V'}catch(e){$('ms').textContent='Copy blocked by the browser. Use CSV instead'}};
+$('bx').onclick=()=>{if(!rows.length)return;if(!window.XLSX){$('bv').click();$('ms').textContent='Excel library did not load, saved CSV instead';return}
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(tbl());ws['!cols']=[{wch:10},{wch:8},{wch:8},{wch:11},{wch:26}];XLSX.utils.book_append_sheet(wb,ws,'Log');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Measure','Value']].concat(summary(),MODES[mode].names.map((z,k)=>[z+' (s)',+A.tz[k].toFixed(1)]))),'Summary');XLSX.writeFile(wb,fn('xlsx'))};
+$('br').onclick=skip=>{if(skip!==true&&rows.length>20&&!confirm('Clear all '+rows.length+' rows? Export first if you need them.'))return;rows=[];rst();tb.innerHTML='';sel=-1;setFz(0,0);stat()};
+$('bf').onclick=()=>setFz(!fz,nowT());
+$('bt').onclick=()=>{const r=document.documentElement,d=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=d?'light':'dark'};
+addEventListener('beforeunload',e=>{if(rows.length&&!rows[0].demo){e.preventDefault();e.returnValue=''}});
+setMode(3);ui();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
